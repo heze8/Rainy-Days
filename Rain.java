@@ -48,19 +48,40 @@ class Frame extends JFrame implements ActionListener {
 }
 
 class Drop {
+    public static Wind wind = new Wind();
     protected int velocity, x, y, z, length;
 
     public Drop(int x, int y, int z) {
         this.x = x;
         this.y = y;
         this.z = z;
-        velocity = 7 + (20 - z)/2;
-        length = 8 + (10 - z)/2;
+        velocity = 6 + (15 - z)/2;
+        length = 8 + (15 - z)/2;
     }
 
     public void paint(Graphics g) {
-        g.drawLine(x, y, x, y + length);
+        int windFactor = wind.windFactor();
+        g.drawLine(x, y, x + windFactor, y + length);
+        x += windFactor;
         y += length + velocity;
+    }
+}
+
+class Wind {
+    protected int scale;
+
+    public int windFactor(){
+        return (int) (-3 * Math.cos(Math.toRadians(scale/2)) + 3);
+    }
+
+    public void reset(){
+        scale = 0;
+    }
+
+    public void update(){
+        scale++;
+        if(scale >= 720)
+            scale = 0;
     }
 }
 
@@ -75,8 +96,10 @@ class Splash {
     }
 
     public void paint(Graphics g) {
-            g.drawLine(x, y, x + 5, y - 5);
-            g.drawLine(x, y, x - 5, y - 5);
+            g.drawLine(x, y, x + 4, y - 4);
+            g.drawLine(x, y, x - 4, y - 4);
+            g.drawRect(x + (int)(10 * Math.random()), y + (int)(10 * Math.random()), 1, 2);
+            g.drawRect(x + (int)(10 * Math.random() - 20), y + (int)(10 * Math.random()), 1, 2);
     }
 }
 
@@ -117,7 +140,10 @@ class Panel extends JPanel {
         if(drops.size() != (this.getHeight() + this.getWidth())/2) {
             drops.clear();
             createDrops();
+            Drop.wind.reset();
         }
+
+        Drop.wind.update();
 
         for(int i = 0; i < drops.size(); i++) {
             Drop d = drops.get(i);
