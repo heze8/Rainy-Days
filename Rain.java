@@ -2,6 +2,7 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import java.util.ArrayList;
+import java.util.Random;
 
 class Rain {
     public static void main(String args[]) {  
@@ -10,6 +11,7 @@ class Rain {
         f.start();
     }   
 }
+
 class Frame extends JFrame implements ActionListener {  
     private int DEFAULT_HEIGHT = 750;
     private int DEFAULT_WIDTH = 750;
@@ -31,6 +33,7 @@ class Frame extends JFrame implements ActionListener {
         this.setBackground(Color.BLACK);
         this.setResizable(true);
         this.setContentPane(panel);
+        this.addMouseListener(new mouseField());
 
         this.setVisible(true);
     }
@@ -43,6 +46,7 @@ class Frame extends JFrame implements ActionListener {
 
     public void actionPerformed(ActionEvent e) {
         repaint();
+        getToolkit().sync();
     }
 
 }
@@ -50,26 +54,133 @@ class Frame extends JFrame implements ActionListener {
 class Drop {
     public static Wind wind = new Wind();
     protected int velocity, x, y, z, length;
+    private int rX, rY;
+    private final double cdValue = 40;
+    private double cd;
+    // private double repelScale = 0.5;
 
     public Drop(int x, int y, int z) {
         this.x = x;
         this.y = y;
         this.z = z;
-        velocity = 6 + (15 - z)/2;
-        length = 8 + (15 - z)/2;
+        velocity = 9 + (20 - z)/2;
+        length = 5 + (20 - z)/2;
+    }
+
+    public void reset(int x) {
+        this.x = x;
+        this.y = (int) (Math.random() * 100 - 100);
+    }
+
+    public void set(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    // public int getX() {
+    //     return x;
+    // }
+
+    // public int getY() {
+    //     return y;
+    // }
+
+    private void repelled(double r) {
+        cd = cdValue;
+        r += (Math.random() - 0.5)/10 - r/5; 
+        //To make the drops drop left and right more as
+        //it doesn't look nice dropping up and down over again.
+    
+        if (r < 0) {
+            rX = (int) ( (length) * (1 + r));
+        }
+        else {
+            rX = (int) -( (length) * (1 - r));
+        }
+        rY = (int) ( -length * Math.abs(r));
     }
 
     public void paint(Graphics g) {
-        int windFactor = wind.windFactor();
-        g.drawLine(x, y, x + windFactor, y + length);
-        x += windFactor;
-        y += length + velocity;
+        if (mouseField.check(x, y)) {
+            repelled(mouseField.repel(x, y));
+        }
+       
+        double s = cd/cdValue;
+        int windFactor = (int) (wind.windFactor() * (1 - s));
+        int len = (int) (length * (1 - s));
+        if (cd > 0) {
+            --cd;
+            g.drawLine(x, y, x + (int) (rX * s) + windFactor, y + (int) (rY * s) + len);
+            x += (int) (rX * s);
+            y += (int) (rY * s);
+        }
+        else {
+            g.drawLine(x, y, x + windFactor, y + length);
+        }
+            x += (int) (windFactor * (1 - s));
+            y += (int) (velocity * (1 - s));
+    }
+}
+
+class mouseField implements MouseListener{
+    static boolean active;
+    static PointerInfo pointer = MouseInfo.getPointerInfo();
+    static Point mouseLocation = pointer.getLocation();
+    private static int range = 50;
+    static int mouseX = mouseLocation.x;
+    static int mouseY = mouseLocation.y;
+
+    public void mousePressed(MouseEvent e) {
+        active = !active;
+    } 
+    
+    public void mouseExited(MouseEvent e) {}
+
+    public void mouseClicked(MouseEvent e) {}
+
+    public void mouseEntered(MouseEvent e) {}
+
+    public void mouseReleased(MouseEvent e) {}
+
+    static boolean check(int checkX, int checkY) {
+        if(!active) {
+            return false;
+        }
+        int x = Math.abs(mouseX - checkX);
+        int y = mouseY - checkY;
+        if (y < 0) {
+            return false;
+        }
+        else if (x*x + y*y <= range * range) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    static double repel(int x, int y) {
+        int negative = 1;
+        if(mouseX - x < 0) {
+            negative = -1;
+        }
+        return (double) (negative * (mouseY - y))/range;
+    }
+
+    public static void update() {
+        if (!active) {
+            return;
+        }
+        pointer = MouseInfo.getPointerInfo();
+        mouseLocation = pointer.getLocation();
+        mouseX = mouseLocation.x;
+        mouseY = mouseLocation.y;
     }
 }
 
 class Wind {
     protected int scale;
-
+    //0 - 6 scale
     public int windFactor(){
         return (int) (-3 * Math.cos(Math.toRadians(scale/2)) + 3);
     }
@@ -128,12 +239,12 @@ class Panel extends JPanel {
     private Drop genDrop() {
         int rX = (int) (Math.random() * this.getWidth());
         int rY = (int) (Math.random() * 200 - 100);
-        int rZ = (int) (Math.random() * 15);
+        int rZ = (int) (Math.random() * 20);
         return new Drop(rX, rY, rZ);
     }
 
     private void changeDrops(int i) {
-        drops.set(i, genDrop());
+        drops.get(i).reset((int) (Math.random() * this.getWidth() - Drop.wind.windFactor() * 20));
     }
 
     public void paint(Graphics g) {
@@ -144,18 +255,20 @@ class Panel extends JPanel {
         }
 
         Drop.wind.update();
+        mouseField.update();
 
         for(int i = 0; i < drops.size(); i++) {
             Drop d = drops.get(i);
             d.paint(g);
 
-            if(d.y >= this.getHeight() - 15) {
+            if(d.y + d.z >= this.getHeight() - 15) {
                 Splash splash = new Splash(d.x, d.y);
                 splash.paint(g);
             }
-            if(d.y >= this.getHeight()) {
+            if(d.y + d.z>= this.getHeight()) {
                 changeDrops(i);
             }
         }
+        
     }
 }
