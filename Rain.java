@@ -17,6 +17,7 @@ class Frame extends JFrame implements ActionListener {
     private int DEFAULT_WIDTH = 750;
     private Panel panel = new Panel();
     private Timer timer = new Timer(33, null);
+    private static Color color = Color.BLUE;
 
     public Frame() {
         timer.addActionListener(this);
@@ -26,6 +27,11 @@ class Frame extends JFrame implements ActionListener {
     public void start() {
         timer.start();
     }
+
+    public static void setColor () {
+        color = new Color((int)(Math.random() * 0x1000000));
+    }
+
     public void initializeFrame() {
         this.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -40,7 +46,7 @@ class Frame extends JFrame implements ActionListener {
 
     public void paint(Graphics g) {
         g.clearRect(0, 0, this.getWidth(), this.getHeight());
-        g.setColor(Color.WHITE);
+        g.setColor(color);
         panel.paint(g);
     }
 
@@ -132,6 +138,7 @@ class mouseField implements MouseListener{
 
     public void mousePressed(MouseEvent e) {
         active = !active;
+        Frame.setColor();
     } 
     
     public void mouseExited(MouseEvent e) {}
